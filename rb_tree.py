@@ -1,3 +1,6 @@
+import random
+
+
 class RBNode(object):
     __slots__ = ('value', 'left', 'right', 'parent', 'is_black')
 
@@ -14,6 +17,9 @@ class RBTree(object):
 
     def __init__(self):
         self.__root = None
+
+    def root(self):
+        return self.__root
 
     def __insert_node(self, value, parent=None):
         node = RBNode(value)
@@ -46,14 +52,14 @@ class RBTree(object):
                         break
                     else:
                         p = p.parent.parent
-                elif node == p.left:
-                    # case 2: 如果node的叔叔节点存在且为黑色或者其叔叔节点不存在，node节点为父节点的左子节点
-                    self.__rb_right_rotate(node.parent)
-                    break
                 else:
-                    # case 3: 如果node的叔叔节点存在且为黑色或者不存在，node节点为父节点的右子节点
-                    self.__left_rotate(node.parent)
-                    self.__rb_right_rotate(node)
+                    if node == p.right:
+                        node = p
+                        self.left_rotate(node)
+
+                    node.parent.is_black = True
+                    node.parent.parent.is_black = False
+                    self.right_rotate(node.parent.parent)
                     break
         else:
             while p:
@@ -66,75 +72,58 @@ class RBTree(object):
                         break
                     else:
                         p = p.parent.parent
-                elif node == p.right:
-                    self.__rb_left_rotate(node.parent)
-                    break
+
                 else:
-                    self.__right_rotate(node.parent)
-                    self.__rb_left_rotate(node)
+                    if node == p.left:
+                        node = p
+                        self.right_rotate(node)
+
+                    node.parent.is_black = True
+                    node.parent.parent.is_black = False
+                    self.left_rotate(node.parent.parent)
                     break
 
         self.__root.is_black = True
 
-    @staticmethod
-    def __right_rotate(node):
-        node.parent.right = node.left
-        node.left.parent = node.parent
-
-        node.parent = node.left
-        node.left.right = node
-        node.left = None
-
-    @staticmethod
-    def __left_rotate(node):
-        node.parent.left = node.right
-        node.right.parent = node.parent
-
-        node.parent = node.right
-        node.right.left = node
-        node.right = None
-
-    def __rb_right_rotate(self, node):
+    def left_rotate(self, node):
         p = node.parent
+        r = node.right
 
-        node.parent = p.parent
-        if p.parent:
-            if p.parent.left == p.parent:
-                p.parent.left = node
+        if p:
+            r.parent = p
+            if node == p.left:
+                p.left = r
             else:
-                p.parent.right = node
+                p.right = r
         else:
-            self.__root = node
+            self.__root = r
 
-        p.parent = node
-        p.left = node.right
-        if node.right:
-            node.right.parent = p
-        node.right = p
+        node.right = r.left
+        if r.left:
+            r.left.parent = node
 
-        node.is_black = True
-        p.is_black = False
+        r.left = node
+        node.parent = r
 
-    def __rb_left_rotate(self, node):
+    def right_rotate(self, node):
         p = node.parent
+        left = node.left
 
-        node.parent = p.parent
-        if p.parent:
-            if p.parent.left == p.parent:
-                p.parent.left = node
+        if p:
+            left.parent = p
+            if node == p.left:
+                p.left = left
             else:
-                p.parent.right = node
+                p.right = left
         else:
-            self.__root = node
+            self.__root = left
 
-        p.parent = node
-        p.right = node.left
-        if node.left:
-            node.left.parent = p
-        node.left = p
+        node.left = left.right
+        if left.right:
+            left.right.parent = node
 
-        node.is_black = True
-        p.is_black = False
+        left.right = node
+        node.parent = left
 
     def insert(self, value):
         node = self.__root
@@ -152,8 +141,53 @@ class RBTree(object):
         # 生成节点
         self.__insert_node(value, p)
 
+    def verify(self):
+        self.__verify(self.__root)
+
+    def __verify(self, node):
+        if not node:
+            return 1
+
+        if not node.is_black:
+            if node.right and (not node.right.is_black):
+                raise RuntimeError('verify failed(2)')
+
+            if node.left and (not node.left.is_black):
+                raise RuntimeError('verify failed(3)')
+
+            i = self.__verify(node.left)
+            j = self.__verify(node.right)
+            if i != j:
+                raise RuntimeError('verify failed(4), left black count = %d , right black count = %d ' % (i, j))
+            else:
+                return i + (1 if node.is_black else 0)
+
+
+def _print(node, depth):
+    for _ in range(0, depth):
+        print(' ')
+
+    print('-')
+    if not node:
+        print('\n')
+    else:
+        print(' %d %s\n' % (node.value, '(black)' if node.is_black else '(red)'))
+        _print(node.left, depth + 2)
+        _print(node.right, depth + 2)
+
+
+def print_tree(root):
+    _print(root, 0)
+
 
 if __name__ == '__main__':
     rb_tree = RBTree()
-    for i in [10, 40, 30, 60, 90, 70, 20, 50, 80]:
-        rb_tree.insert(i)
+
+    data = [random.randint(1, 1000000) for x in range(0, 100000)]
+
+    print(data)
+
+    for value in data:
+        rb_tree.insert(value)
+
+    rb_tree.verify()
